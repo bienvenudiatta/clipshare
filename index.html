@@ -1,0 +1,753 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+<meta name="theme-color" content="#0a0a0f">
+<title>ClipShare — Presse-papiers partagé</title>
+<style>
+  @import url('https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@400;600&family=Inter:wght@400;500;600;700&display=swap');
+
+  * { margin: 0; padding: 0; box-sizing: border-box; }
+
+  :root {
+    --bg: #0a0a0f;
+    --surface: #14141f;
+    --surface-hover: #1c1c2e;
+    --border: #2a2a3d;
+    --text: #e4e4ef;
+    --text-dim: #8888a0;
+    --accent: #6c5ce7;
+    --accent-glow: rgba(108, 92, 231, 0.25);
+    --green: #2ecc71;
+    --green-glow: rgba(46, 204, 113, 0.2);
+    --red: #e74c3c;
+    --orange: #f39c12;
+    --radius: 12px;
+  }
+
+  body {
+    font-family: 'Inter', system-ui, sans-serif;
+    background: var(--bg);
+    color: var(--text);
+    min-height: 100dvh;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    padding: 1rem;
+    overflow-x: hidden;
+  }
+
+  .container {
+    width: 100%;
+    max-width: 520px;
+    display: flex;
+    flex-direction: column;
+    gap: 1rem;
+  }
+
+  header {
+    text-align: center;
+    padding: 1.5rem 0 0.5rem;
+  }
+  header h1 {
+    font-size: 1.6rem;
+    font-weight: 700;
+    letter-spacing: -0.02em;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 0.5rem;
+  }
+  header p {
+    color: var(--text-dim);
+    font-size: 0.85rem;
+    margin-top: 0.35rem;
+  }
+
+  .status-bar {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 0.5rem;
+    padding: 0.5rem 1rem;
+    border-radius: 999px;
+    background: var(--surface);
+    border: 1px solid var(--border);
+    font-size: 0.8rem;
+    margin: 0 auto;
+    width: fit-content;
+  }
+  .status-dot {
+    width: 8px; height: 8px;
+    border-radius: 50%;
+    background: var(--red);
+    flex-shrink: 0;
+  }
+  .status-dot.connected {
+    background: var(--green);
+    box-shadow: 0 0 8px var(--green-glow);
+    animation: pulse 2s infinite;
+  }
+  .status-dot.waiting {
+    background: var(--orange);
+    animation: pulse 1.5s infinite;
+  }
+  @keyframes pulse {
+    0%, 100% { opacity: 1; }
+    50% { opacity: 0.5; }
+  }
+
+  .card {
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: var(--radius);
+    padding: 1.25rem;
+  }
+  .card-title {
+    font-size: 0.75rem;
+    font-weight: 600;
+    text-transform: uppercase;
+    letter-spacing: 0.06em;
+    color: var(--text-dim);
+    margin-bottom: 0.75rem;
+  }
+
+  .room-section {
+    display: flex;
+    flex-direction: column;
+    gap: 0.75rem;
+  }
+  .room-code-display {
+    font-family: 'JetBrains Mono', monospace;
+    font-size: 2rem;
+    font-weight: 600;
+    text-align: center;
+    letter-spacing: 0.15em;
+    color: var(--accent);
+    padding: 0.5rem;
+    user-select: all;
+  }
+  .room-actions {
+    display: flex;
+    gap: 0.5rem;
+  }
+  .room-input {
+    flex: 1;
+    background: var(--bg);
+    border: 1px solid var(--border);
+    border-radius: 8px;
+    padding: 0.65rem 0.85rem;
+    color: var(--text);
+    font-family: 'JetBrains Mono', monospace;
+    font-size: 1rem;
+    letter-spacing: 0.1em;
+    text-align: center;
+    outline: none;
+    transition: border-color 0.2s;
+  }
+  .room-input:focus {
+    border-color: var(--accent);
+    box-shadow: 0 0 0 3px var(--accent-glow);
+  }
+  .room-input::placeholder {
+    color: var(--text-dim);
+    letter-spacing: 0.05em;
+    font-size: 0.85rem;
+  }
+
+  .btn {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    gap: 0.4rem;
+    padding: 0.65rem 1.1rem;
+    border-radius: 8px;
+    border: none;
+    font-family: inherit;
+    font-size: 0.85rem;
+    font-weight: 600;
+    cursor: pointer;
+    transition: all 0.15s;
+    white-space: nowrap;
+  }
+  .btn:active { transform: scale(0.97); }
+  .btn-primary {
+    background: var(--accent);
+    color: #fff;
+  }
+  .btn-primary:hover { background: #7b6cf0; }
+  .btn-secondary {
+    background: var(--surface-hover);
+    color: var(--text);
+    border: 1px solid var(--border);
+  }
+  .btn-secondary:hover { background: var(--border); }
+  .btn-danger {
+    background: rgba(231, 76, 60, 0.15);
+    color: var(--red);
+    border: 1px solid rgba(231, 76, 60, 0.3);
+  }
+  .btn-full { width: 100%; }
+
+  .clip-area {
+    display: flex;
+    flex-direction: column;
+    gap: 0.75rem;
+  }
+  .clip-textarea {
+    width: 100%;
+    min-height: 140px;
+    background: var(--bg);
+    border: 1px solid var(--border);
+    border-radius: 8px;
+    padding: 0.85rem;
+    color: var(--text);
+    font-family: inherit;
+    font-size: 0.95rem;
+    line-height: 1.5;
+    resize: vertical;
+    outline: none;
+    transition: border-color 0.2s;
+  }
+  .clip-textarea:focus {
+    border-color: var(--accent);
+    box-shadow: 0 0 0 3px var(--accent-glow);
+  }
+  .clip-textarea::placeholder { color: var(--text-dim); }
+  .clip-actions {
+    display: flex;
+    gap: 0.5rem;
+  }
+  .clip-actions .btn { flex: 1; }
+
+  .history-list {
+    display: flex;
+    flex-direction: column;
+    gap: 0.5rem;
+    max-height: 250px;
+    overflow-y: auto;
+  }
+  .history-item {
+    display: flex;
+    align-items: flex-start;
+    gap: 0.6rem;
+    padding: 0.6rem 0.75rem;
+    background: var(--bg);
+    border-radius: 8px;
+    border: 1px solid transparent;
+    cursor: pointer;
+    transition: all 0.15s;
+  }
+  .history-item:hover {
+    border-color: var(--border);
+    background: var(--surface-hover);
+  }
+  .history-dir {
+    font-size: 0.75rem;
+    padding: 0.15rem 0.4rem;
+    border-radius: 4px;
+    font-weight: 600;
+    flex-shrink: 0;
+    margin-top: 0.1rem;
+  }
+  .history-dir.sent {
+    background: rgba(108, 92, 231, 0.15);
+    color: var(--accent);
+  }
+  .history-dir.recv {
+    background: var(--green-glow);
+    color: var(--green);
+  }
+  .history-text {
+    font-size: 0.82rem;
+    color: var(--text-dim);
+    line-height: 1.4;
+    overflow: hidden;
+    display: -webkit-box;
+    -webkit-line-clamp: 2;
+    -webkit-box-orient: vertical;
+    word-break: break-all;
+  }
+  .history-empty {
+    text-align: center;
+    color: var(--text-dim);
+    font-size: 0.82rem;
+    padding: 1rem;
+  }
+
+  .toast {
+    position: fixed;
+    bottom: 1.5rem;
+    left: 50%;
+    transform: translateX(-50%) translateY(100px);
+    background: var(--surface);
+    border: 1px solid var(--border);
+    color: var(--text);
+    padding: 0.6rem 1.2rem;
+    border-radius: 999px;
+    font-size: 0.82rem;
+    font-weight: 500;
+    opacity: 0;
+    transition: all 0.3s ease;
+    z-index: 100;
+    pointer-events: none;
+    max-width: 90%;
+    text-align: center;
+  }
+  .toast.show {
+    transform: translateX(-50%) translateY(0);
+    opacity: 1;
+  }
+
+  .connected-only { display: none; }
+  .show-when-connected .connected-only { display: flex; }
+  .show-when-connected .disconnected-only { display: none; }
+
+  .howto {
+    font-size: 0.8rem;
+    color: var(--text-dim);
+    line-height: 1.6;
+    padding: 0.5rem 0;
+  }
+  .howto strong { color: var(--text); font-weight: 600; }
+  .howto ol { padding-left: 1.2rem; }
+  .howto li { margin-bottom: 0.3rem; }
+
+  .debug-log {
+    font-family: 'JetBrains Mono', monospace;
+    font-size: 0.7rem;
+    color: var(--text-dim);
+    background: var(--bg);
+    border-radius: 6px;
+    padding: 0.5rem;
+    max-height: 100px;
+    overflow-y: auto;
+    margin-top: 0.5rem;
+    display: none;
+  }
+  .debug-log.visible { display: block; }
+
+  footer {
+    text-align: center;
+    padding: 1.5rem 0;
+    color: var(--text-dim);
+    font-size: 0.72rem;
+  }
+  footer a { color: var(--accent); text-decoration: none; }
+
+  @media (max-width: 480px) {
+    body { padding: 0.75rem; }
+    header h1 { font-size: 1.35rem; }
+    .room-code-display { font-size: 1.6rem; }
+    .clip-textarea { min-height: 110px; }
+  }
+</style>
+</head>
+<body>
+
+<div class="container" id="app">
+  <header>
+    <h1>📋 ClipShare</h1>
+    <p>Copier ici, coller là-bas — entre tous tes appareils</p>
+  </header>
+
+  <div class="status-bar">
+    <div class="status-dot" id="statusDot"></div>
+    <span id="statusText">Initialisation...</span>
+  </div>
+
+  <!-- Connection -->
+  <div class="card" id="connectionCard">
+    <div class="card-title">🔗 Connexion</div>
+    <div class="room-section" id="roomSetup">
+      <div>
+        <div style="font-size:0.85rem;margin-bottom:0.5rem;">Ton code de salle :</div>
+        <div class="room-code-display" id="myRoomCode">...</div>
+      </div>
+      <div style="font-size:0.82rem;color:var(--text-dim);text-align:center;">— ou rejoins une salle —</div>
+      <div class="room-actions">
+        <input class="room-input" id="joinInput" placeholder="Code" maxlength="6" autocomplete="off" autocorrect="off" spellcheck="false">
+        <button class="btn btn-primary" id="joinBtn" onclick="joinRoom()">Rejoindre</button>
+      </div>
+    </div>
+    <div class="connected-only" id="connectedInfo" style="flex-direction:column;gap:0.5rem;">
+      <div style="font-size:0.9rem;">
+        Connecté à la salle <strong id="connectedRoom" style="font-family:'JetBrains Mono',monospace;color:var(--accent);"></strong>
+      </div>
+      <button class="btn btn-danger" onclick="disconnect()">Déconnecter</button>
+    </div>
+    <div class="debug-log" id="debugLog"></div>
+    <button class="btn btn-secondary" onclick="toggleDebug()" style="margin-top:0.5rem;font-size:0.7rem;padding:0.3rem 0.6rem;">🔍 Debug</button>
+  </div>
+
+  <!-- Clipboard -->
+  <div class="card connected-only" id="clipCard">
+    <div class="card-title">📝 Presse-papiers</div>
+    <div class="clip-area">
+      <textarea class="clip-textarea" id="clipText" placeholder="Colle ou tape ton texte ici..."></textarea>
+      <div class="clip-actions">
+        <button class="btn btn-primary" onclick="sendClip()">Envoyer ↗</button>
+        <button class="btn btn-secondary" onclick="pasteAndSend()">Coller + Envoyer</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- Received -->
+  <div class="card connected-only" id="receivedCard" style="display:none;">
+    <div class="card-title">📥 Reçu de l'autre appareil</div>
+    <div class="clip-area">
+      <textarea class="clip-textarea" id="receivedText" readonly style="background:rgba(108,92,231,0.06);border-color:rgba(108,92,231,0.2);"></textarea>
+      <button class="btn btn-primary btn-full" onclick="copyReceived()">Copier dans le presse-papiers 📋</button>
+    </div>
+  </div>
+
+  <!-- History -->
+  <div class="card connected-only" id="historyCard">
+    <div class="card-title">📜 Historique</div>
+    <div class="history-list" id="historyList">
+      <div class="history-empty">Aucun transfert pour l'instant</div>
+    </div>
+  </div>
+
+  <!-- How-to -->
+  <div class="card disconnected-only">
+    <div class="card-title">💡 Comment ça marche</div>
+    <div class="howto">
+      <ol>
+        <li>Ouvre cette page sur <strong>2 appareils</strong> (téléphone + PC)</li>
+        <li>Sur l'appareil A, note le <strong>code de salle</strong></li>
+        <li>Sur l'appareil B, entre ce code et clique <strong>Rejoindre</strong></li>
+        <li>Colle du texte d'un côté → il arrive de l'autre côté</li>
+      </ol>
+      <p style="margin-top:0.5rem;">Fonctionne en <strong>peer-to-peer</strong> — rien ne passe par un serveur. 🔒</p>
+    </div>
+  </div>
+
+  <footer>
+    ClipShare — fait par <a href="https://linkedin.com/in/bienvenu-diatta-58023b267" target="_blank">Cypher_IA</a> — 100% gratuit, P2P, open source
+  </footer>
+</div>
+
+<div class="toast" id="toast"></div>
+
+<script src="https://unpkg.com/peerjs@1.5.4/dist/peerjs.min.js"></script>
+
+<script>
+  let peer = null;
+  let conn = null;
+  let myCode = '';
+  let historyItems = [];
+  let retryCount = 0;
+  const MAX_RETRIES = 3;
+
+  // --- Utilities ---
+  function genCode() {
+    const chars = 'ABCDEFGHJKLMNPQRSTUVWXYZ23456789';
+    let code = '';
+    for (let i = 0; i < 5; i++) code += chars[Math.floor(Math.random() * chars.length)];
+    return code;
+  }
+
+  function toast(msg) {
+    const t = document.getElementById('toast');
+    t.textContent = msg;
+    t.classList.add('show');
+    setTimeout(() => t.classList.remove('show'), 3000);
+  }
+
+  function log(msg) {
+    console.log('[ClipShare]', msg);
+    const el = document.getElementById('debugLog');
+    const time = new Date().toLocaleTimeString();
+    el.innerHTML += `<div>${time} — ${msg}</div>`;
+    el.scrollTop = el.scrollHeight;
+  }
+
+  function toggleDebug() {
+    document.getElementById('debugLog').classList.toggle('visible');
+  }
+
+  function setStatus(state, text) {
+    document.getElementById('statusDot').className = 'status-dot ' + state;
+    document.getElementById('statusText').textContent = text;
+    const app = document.getElementById('app');
+    if (state === 'connected') {
+      app.classList.add('show-when-connected');
+    } else {
+      app.classList.remove('show-when-connected');
+    }
+  }
+
+  function escapeHtml(s) {
+    const d = document.createElement('div');
+    d.textContent = s;
+    return d.innerHTML;
+  }
+
+  // --- PeerJS ---
+  function initPeer() {
+    myCode = genCode();
+    const peerId = 'clipshare-' + myCode;
+
+    log('Initialisation avec code: ' + myCode);
+    document.getElementById('myRoomCode').textContent = myCode;
+
+    // Destroy old peer if exists
+    if (peer) {
+      peer.destroy();
+    }
+
+    peer = new Peer(peerId, {
+      debug: 1,
+      config: {
+        iceServers: [
+          { urls: 'stun:stun.l.google.com:19302' },
+          { urls: 'stun:stun1.l.google.com:19302' },
+          { urls: 'stun:stun2.l.google.com:19302' },
+          { urls: 'stun:stun3.l.google.com:19302' },
+          { urls: 'stun:stun4.l.google.com:19302' }
+        ]
+      }
+    });
+
+    peer.on('open', (id) => {
+      log('Connecté au serveur PeerJS ✓ (ID: ' + id + ')');
+      setStatus('waiting', 'En attente — code: ' + myCode);
+      retryCount = 0;
+    });
+
+    peer.on('connection', (incoming) => {
+      log('Connexion entrante reçue');
+      if (conn) conn.close();
+      conn = incoming;
+      setupConnection();
+    });
+
+    peer.on('error', (err) => {
+      log('Erreur: ' + err.type + ' — ' + err.message);
+
+      if (err.type === 'unavailable-id') {
+        log('Code déjà pris, régénération...');
+        myCode = genCode();
+        document.getElementById('myRoomCode').textContent = myCode;
+        if (peer) peer.destroy();
+        setTimeout(initPeer, 500);
+      } else if (err.type === 'peer-unavailable') {
+        toast('Salle introuvable — vérifie le code');
+        setStatus('waiting', 'En attente — code: ' + myCode);
+        document.getElementById('joinBtn').disabled = false;
+      } else if (err.type === 'network' || err.type === 'server-error' || err.type === 'socket-error') {
+        log('Erreur réseau/serveur, tentative ' + (retryCount + 1));
+        if (retryCount < MAX_RETRIES) {
+          retryCount++;
+          toast('Reconnexion... (' + retryCount + '/' + MAX_RETRIES + ')');
+          setTimeout(initPeer, 2000 * retryCount);
+        } else {
+          setStatus('', 'Échec de connexion au serveur');
+          toast('Impossible de se connecter. Vérifie ta connexion internet.');
+          log('Abandon après ' + MAX_RETRIES + ' tentatives');
+        }
+      } else {
+        toast('Erreur: ' + err.type);
+      }
+    });
+
+    peer.on('disconnected', () => {
+      log('Déconnecté du serveur PeerJS');
+      if (!peer.destroyed) {
+        log('Tentative de reconnexion...');
+        peer.reconnect();
+      }
+    });
+  }
+
+  function joinRoom() {
+    const input = document.getElementById('joinInput').value.trim().toUpperCase();
+    if (!input || input.length < 4) {
+      toast('Entre un code de salle valide');
+      return;
+    }
+
+    if (!peer || peer.destroyed) {
+      toast('Pas encore connecté au serveur, patiente...');
+      initPeer();
+      return;
+    }
+
+    log('Tentative de connexion à: ' + input);
+    setStatus('waiting', 'Connexion à ' + input + '...');
+    document.getElementById('joinBtn').disabled = true;
+
+    const targetId = 'clipshare-' + input;
+    if (conn) conn.close();
+    conn = peer.connect(targetId, { reliable: true, serialization: 'json' });
+
+    // Timeout if connection takes too long
+    const timeout = setTimeout(() => {
+      if (!conn || !conn.open) {
+        log('Timeout de connexion');
+        toast('Timeout — la salle ne répond pas');
+        setStatus('waiting', 'En attente — code: ' + myCode);
+        document.getElementById('joinBtn').disabled = false;
+      }
+    }, 15000);
+
+    conn.on('open', () => {
+      clearTimeout(timeout);
+      log('Connexion ouverte à ' + input);
+    });
+
+    setupConnection(input, timeout);
+  }
+
+  function setupConnection(joinedCode, timeout) {
+    const code = joinedCode || myCode;
+
+    conn.on('open', () => {
+      if (timeout) clearTimeout(timeout);
+      setStatus('connected', 'Connecté');
+      document.getElementById('connectedRoom').textContent = code;
+      document.getElementById('joinBtn').disabled = false;
+      toast('Connecté ! 🎉');
+      log('Connexion P2P établie ✓');
+    });
+
+    conn.on('data', (data) => {
+      log('Données reçues: ' + (data.type || 'unknown'));
+      if (data.type === 'clip') {
+        document.getElementById('receivedText').value = data.text;
+        document.getElementById('receivedCard').style.display = '';
+        addHistory('recv', data.text);
+        toast('Texte reçu ! 📥');
+      } else if (data.type === 'ping') {
+        conn.send({ type: 'pong' });
+      }
+    });
+
+    conn.on('close', () => {
+      log('Connexion fermée par le pair');
+      setStatus('waiting', 'En attente — code: ' + myCode);
+      conn = null;
+      document.getElementById('joinBtn').disabled = false;
+      toast('Déconnecté du pair');
+    });
+
+    conn.on('error', (err) => {
+      log('Erreur connexion: ' + err);
+      toast('Erreur de connexion au pair');
+      document.getElementById('joinBtn').disabled = false;
+    });
+  }
+
+  // --- Clipboard actions ---
+  function sendClip() {
+    const text = document.getElementById('clipText').value.trim();
+    if (!text) { toast('Rien à envoyer'); return; }
+    if (!conn || !conn.open) { toast('Non connecté'); return; }
+    conn.send({ type: 'clip', text: text });
+    addHistory('sent', text);
+    toast('Envoyé ! ↗');
+    log('Texte envoyé (' + text.length + ' chars)');
+  }
+
+  async function pasteAndSend() {
+    try {
+      const text = await navigator.clipboard.readText();
+      if (!text) { toast('Presse-papiers vide'); return; }
+      document.getElementById('clipText').value = text;
+      sendClip();
+    } catch (e) {
+      toast('Colle manuellement dans la zone de texte');
+      log('Clipboard API refusée: ' + e.message);
+    }
+  }
+
+  function copyReceived() {
+    const text = document.getElementById('receivedText').value;
+    if (!text) return;
+    copyToClipboard(text);
+  }
+
+  function copyToClipboard(text) {
+    if (navigator.clipboard && navigator.clipboard.writeText) {
+      navigator.clipboard.writeText(text)
+        .then(() => toast('Copié ! 📋'))
+        .catch(() => fallbackCopy(text));
+    } else {
+      fallbackCopy(text);
+    }
+  }
+
+  function fallbackCopy(text) {
+    const ta = document.createElement('textarea');
+    ta.value = text;
+    ta.style.cssText = 'position:fixed;left:-9999px;top:0;';
+    document.body.appendChild(ta);
+    ta.focus();
+    ta.select();
+    try {
+      document.execCommand('copy');
+      toast('Copié ! 📋');
+    } catch {
+      toast('Sélectionne et copie manuellement');
+    }
+    document.body.removeChild(ta);
+  }
+
+  function disconnect() {
+    if (conn) { conn.close(); conn = null; }
+    setStatus('waiting', 'En attente — code: ' + myCode);
+    document.getElementById('receivedCard').style.display = 'none';
+    document.getElementById('receivedText').value = '';
+    toast('Déconnecté');
+    log('Déconnexion manuelle');
+  }
+
+  // --- History ---
+  function addHistory(dir, text) {
+    historyItems.unshift({ dir, text, time: new Date() });
+    if (historyItems.length > 20) historyItems.pop();
+    renderHistory();
+  }
+
+  function renderHistory() {
+    const list = document.getElementById('historyList');
+    if (historyItems.length === 0) {
+      list.innerHTML = '<div class="history-empty">Aucun transfert pour l\'instant</div>';
+      return;
+    }
+    list.innerHTML = historyItems.map((h, i) => {
+      const safeText = escapeHtml(h.text);
+      return `
+        <div class="history-item" data-index="${i}">
+          <span class="history-dir ${h.dir}">${h.dir === 'sent' ? '↗' : '📥'}</span>
+          <span class="history-text">${safeText}</span>
+        </div>
+      `;
+    }).join('');
+
+    list.querySelectorAll('.history-item').forEach(el => {
+      el.addEventListener('click', () => {
+        const idx = parseInt(el.dataset.index);
+        copyToClipboard(historyItems[idx].text);
+      });
+    });
+  }
+
+  // --- Init ---
+  document.getElementById('joinInput').addEventListener('keydown', (e) => {
+    if (e.key === 'Enter') joinRoom();
+  });
+  document.getElementById('joinInput').addEventListener('input', (e) => {
+    e.target.value = e.target.value.toUpperCase();
+  });
+
+  // Start
+  setStatus('', 'Initialisation...');
+  initPeer();
+</script>
+</body>
+</html>
